@@ -1,0 +1,182 @@
+<!DOCTYPE HTML><html>
+<head>
+  <title>ESP IOT DASHBOARD</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/all.css') }}" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+  <style>
+    html {font-family: Arial; display: inline-block; text-align: center;}
+    h3 {font-size: 1.8rem; color: white;}
+    h4 { font-size: 1.2rem;}
+    p { font-size: 1.4rem;}
+    body {  margin: 0;}
+    canvas { height: 50%; }
+    .switch {position: relative; display: inline-block; width: 120px; height: 68px; margin-bottom: 20px;}
+    .switch input {display: none;}
+    .slider {position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 68px;   opacity: 0.8;   cursor: pointer;}
+    .slider:before {position: absolute; content: ""; height: 52px; width: 52px; left: 8px; bottom: 8px; background-color: #fff; -webkit-transition: .4s; transition: .4s; border-radius: 68px}
+    input:checked+.slider {background-color: #1b78e2}
+    input:checked+.slider:before {-webkit-transform: translateX(52px); -ms-transform: translateX(52px); transform: translateX(52px)}
+    .content { padding: 20px; max-height: 50%;}
+    .card { background-color: white; box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);}
+    .cards { max-width: 100%; margin: 0 auto; display: grid; grid-gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));}
+    .slider2 { appearance:none; -webkit-appearance: none; margin: 14px;  height: 20px; background: #ccc; outline: none; opacity: 0.8; -webkit-transition: .2s; transition: opacity .2s; margin-bottom: 40px; }
+    .slider:hover, .slider2:hover { opacity: 1; }
+    .slider2::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 40px; height: 40px; background: #008B74; cursor: pointer; }
+    .slider2::-moz-range-thumb { width: 40px; height: 40px; background: #008B74; cursor: pointer;}
+    .reading { font-size: 2.6rem;}
+    .card-switch {color: #50a2ff; }
+    .card-light{ color: #008B74;}
+    .card-bme{ color: #572dfb;}
+    .card-motion{ color: #3b3b3b; cursor: pointer;}
+    .icon-pointer{ cursor: pointer;}
+    canvas { max-height: 50%; padding: 1%;}
+  </style>
+  <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script>
+  let sensorData = {
+    labels: [],
+    pressure: [],
+    lightLevel: [],
+    altitude: [],
+    temperature: [],
+    humidity: []
+  };
+
+  async function fetchData() {
+    const response = await fetch('/get');
+    const data = await response.json();
+
+    const now = new Date();
+    const timeLabel = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+
+    if (sensorData.labels.length >= 40) {
+      sensorData.labels.shift();
+      sensorData.pressure.shift();
+      sensorData.lightLevel.shift();
+      sensorData.altitude.shift();
+      sensorData.temperature.shift();
+      sensorData.humidity.shift();
+    }
+
+    sensorData.labels.push(timeLabel);
+    sensorData.pressure.push(data.sensor.pressure);
+    sensorData.lightLevel.push(data.sensor.lux);
+    sensorData.altitude.push(data.sensor.altitude);
+    sensorData.temperature.push(data.sensor.temp);
+    sensorData.humidity.push(data.sensor.humi);
+
+    if(data.buzzer > 50){
+      document.getElementById("buzzer_output").innerHTML = `${data.buzzer} hz`;
+      document.getElementById("buzzer_output").style.color = "#50a2ff";
+    }else{
+      document.getElementById("buzzer_output").innerHTML = "STOP";
+      document.getElementById("buzzer_output").style.color = "#ff0000";
+    }
+
+    
+    document.getElementById("altitude").innerHTML = data.sensor.altitude;
+    document.getElementById("temp").innerHTML = data.sensor.temp;
+    document.getElementById("humi").innerHTML = data.sensor.humi;
+    document.getElementById("light").innerHTML = `${data.sensor.lux} lux  `;
+    document.getElementById("battery").innerHTML = `${data.sensor.battery} %`;
+    document.getElementById("led_0_output").checked = data.led_status[0] == 1;
+    document.getElementById("led_1_output").checked = data.led_status[1] == 1;
+    document.getElementById("led_2_output").checked = data.led_status[2] == 1;
+
+    sensorChart.update();
+  }
+
+  window.onload = function() {
+    setInterval(fetchData, 1000);
+
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+    sensorChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: sensorData.labels,
+        datasets: [
+          {
+            label: 'Pressure',
+            data: sensorData.pressure,
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            fill: false
+          },
+          {
+            label: 'Light Level',
+            data: sensorData.lightLevel,
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            fill: false
+          },
+          {
+            label: 'Altitude',
+            data: sensorData.altitude,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            fill: false
+          },
+          {
+            label: 'Temperature',
+            data: sensorData.temperature,
+            borderColor: 'rgba(153, 102, 255, 1)',
+            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+            fill: false
+          },
+          {
+            label: 'Humidity',
+            data: sensorData.humidity,
+            borderColor: 'rgba(255, 159, 64, 1)',
+            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+            fill: false
+          }
+        ]
+      },
+      options: {
+        scales: {
+          x: {
+            display: true
+          },
+          y: {
+            display: true
+          }
+        }
+      }
+    });
+  }
+</script>
+</head>
+<body>
+  <div class="content">
+    <div class="cards">
+        <div class="card card-bme">
+          <h4><i class="fas fa-location-arrow"></i> 고도</h4><div><p class="reading"><span id="altitude"></span> m</p></div>
+        </div>
+      <div class="card card-bme">
+        <h4><i class="fas fa-thermometer-three-quarters"></i> 온도</h4><div><p class="reading"><span id="temp"></span> &deg;C</p></div>
+      </div>
+      <div class="card card-bme">
+        <h4><i class="fas fa-chart-bar"></i> 습도</h4><div><p class="reading"><span id="humi"></span> &percnt;</p></div>
+      </div>
+      <div class="card card-light">
+        <h4><i class="fas fa-sun"></i> 조도</h4><div><p class="reading"><span id="light"></span></p></div>
+      </div>
+      <div class="card card-motion">
+        <h4><i class="fas fa-battery-three-quarters"></i> Battery</h4><div><p class="reading"><span id="battery">NaN %</span></p></div>
+      </div>
+      <div class="card card-switch"><h4><i class="fas fa-lightbulb"></i> LED0</h4><label class="switch"><input type="checkbox" disabled id="led_0_output"><span class="slider"></span></label></div>
+      <div class="card card-switch"><h4><i class="fas fa-lightbulb"></i> LED1</h4><label class="switch"><input type="checkbox" disabled id="led_1_output"><span class="slider"></span></label></div>
+      <div class="card card-switch"><h4><i class="fas fa-lightbulb"></i> LED2</h4><label class="switch"><input type="checkbox" disabled checked id="led_2_output"><span class="slider"></span></label></div>
+      <div class="card card-switch">
+        <h4><i class="fas fa-volume-up"></i> Buzzer</h4><div><p class="reading"><span id="buzzer_output">200 Hz</span></p></div>
+      </div>
+      <div class="card card-motion">
+        <h4><i class="fas fa-tags"></i> 기준</h4><div><p class="reading"></p>LED0 : lux > 20<br/>LED1 : temp > 26<br/>LED2 : humi > 60<br/>Buzzer 4K: Battery < 20%</p></div>
+      </div>
+  </div>
+
+  <canvas id="sensorChart"></canvas>
+</body>
+</html>
